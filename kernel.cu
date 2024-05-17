@@ -23,7 +23,7 @@
 #define gravityModifier 0.1f
 
 
-__host__ void particles_init(ParticleCenter* h_pos, ParticleCenter* h_vel) {
+__host__ void particles_init(Vector2* h_pos, Vector2* h_vel) {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<float> dis(-1.0f, 1.0f);
@@ -43,43 +43,35 @@ __device__ float smoothingKernel(float radius, float distance) {
   return value / volume;
 }
 
-__device__ float calcDistance(ParticleCenter p1, ParticleCenter p2) {
+__device__ float calcDistance(Vector2 p1, Vector2 p2) {
   return sqrt((p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y));
 }
 
-__device__ float calcDensity(int id, ParticleCenter* h_pos){
-  float density = 0.0f;
-
-  for(int i = 0; i < numberOfParticles; i++){
-    if (i == id) continue;
-    float distance = calcDistance(h_pos[id], h_pos[i]);
-    float influence = smoothingKernel(particleRadius, distance);
-    density += particleMass * smoothingKernel(particleRadius, distance);
+__device__ void checkBoundaries(Vector2* pos, Vector2* vel){
+  //collision with the floor/ceiling
+  if(pos->y <= min_y + particleRadius) {
+    pos->y = min_y + particleRadius;
+    vel->y = damping * -vel->y;
+  }else if(pos->y >= max_y - particleRadius) {
+    pos->y = max_y - particleRadius;
+    vel->y = damping * -vel->y;
   }
-  return density;
+
+  //collision with the walls
+  if(pos->x <= min_x + particleRadius) {
+    pos->x = min_x + particleRadius;
+    vel->x = damping * -vel->x;
+  }else if(pos->x >= max_x - particleRadius) {
+    pos->x = max_x - particleRadius;
+    vel->x = damping * -vel->x;
+  }
 }
 
-__global__ void update(ParticleCenter* pos, ParticleCenter* vel, float deltaMicro) {
+__global__ void update(Vector2* pos, Vector2* vel, float deltaMicro) {
   float deltaSeconds = deltaMicro / 1000000;
   int i = threadIdx.x + blockIdx.x * blockDim.x;
 	if (i < numberOfParticles) {
-    //collision with the floor/ceiling
-    if(pos[i].y <= min_y + particleRadius) {
-      pos[i].y = min_y + particleRadius;
-      vel[i].y = damping * -vel[i].y;
-    }else if(pos[i].x >= max_y - particleRadius) {
-      pos[i].y = max_y - particleRadius;
-      pos[i].y = damping * -vel[i].y;
-    }
-
-    //collision with the walls
-    if(pos[i].x <= min_x + particleRadius) {
-      pos[i].x = min_x + particleRadius;
-      vel[i].x = damping * -vel[i].x;
-    }else if(pos[i].x >= max_x - particleRadius) {
-      pos[i].x = max_x - particleRadius;
-      vel[i].x = damping * -vel[i].x;
-    }
+    checkBoundaries(&pos[i], &vel[i]);
 
     //updating the velocity
     vel[i].y += ((-gravity * gravityModifier)/particleMass) * deltaSeconds;
@@ -98,24 +90,18 @@ int main() {
 	int NUM_THREADS = 256;
 	int NUM_BLOCKS = (numberOfParticles + NUM_THREADS - 1) / NUM_THREADS;
 
-  // int gridX = std::ceil(2.0f / particleRadius);
-  // int gridY = std::ceil(2.0f / particleRadius);
-
 	//host vector pointers
-	ParticleCenter* h_pos, * h_vel;
-  ParticleCenter* h_grid;
+	Vector2* h_pos, * h_vel;
 
 	//device vector pointers
-	ParticleCenter* d_pos, * d_vel;
-  ParticleCenter* * d_grid;
+	Vector2* d_pos, * d_vel;
+
 	//size of the vectors in bytes
-	size_t bytes = numberOfParticles * sizeof(ParticleCenter);
-  // size_t gridBytes = gridX * gridY * sizeof(float);
+	size_t bytes = numberOfParticles * sizeof(Vector2);
 
 	//allocate memory for the host vectors
-	h_pos = (ParticleCenter*)malloc(bytes);
-	h_vel = (ParticleCenter*)malloc(bytes);
-  // h_grid = (ParticleCenter*)malloc(gridBytes);
+	h_pos = (Vector2*)malloc(bytes);
+	h_vel = (Vector2*)malloc(bytes);
 
 	//allocate memory for the device vectors
 	cudaMalloc(&d_pos, bytes);

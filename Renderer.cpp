@@ -114,7 +114,7 @@ bool Renderer::init(unsigned int width, unsigned int height, float triangle_leng
     return true;
 }
 
-float* generateTriangles(ParticleCenter* positions, size_t positions_size, float triangle_length) {
+float* generateTriangles(Vector2* positions, size_t positions_size, float triangle_length) {
     float* triangles = new float[6 * positions_size];
     const float sqrt3 = 1.7320508f;
     float sqrt3_times_length = sqrt3 * triangle_length;
@@ -135,7 +135,7 @@ float* generateTriangles(ParticleCenter* positions, size_t positions_size, float
     return triangles;
 }
 
-void Renderer::bind(ParticleCenter* positions, size_t size) {
+void Renderer::bind(Vector2* positions, size_t size) {
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
@@ -152,7 +152,7 @@ void unbind() {
     glBindVertexArray(0);
 }
 
-bool Renderer::render(ParticleCenter* positions, size_t size) {
+bool Renderer::render(Vector2* positions, size_t size) {
     if (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
