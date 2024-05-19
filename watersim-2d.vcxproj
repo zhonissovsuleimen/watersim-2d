@@ -85,8 +85,11 @@
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="calc.cuh" />
+    <ClInclude Include="parameters.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="shaders_glsl.h" />
+    <ClInclude Include="smoothing_kernels.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Renderer.cpp" />
