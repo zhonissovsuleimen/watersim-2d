@@ -102,10 +102,6 @@ __global__ void update(Vector2* pos, Vector2* vel, Vector2* pressure, float delt
 }
 
 int main() {
-  //device parameters
-  int NUM_THREADS = 256;
-  int NUM_BLOCKS = (NUM_PARTICLES + NUM_THREADS - 1) / NUM_THREADS;
-
   //grid parameters
   float gridLength = PARTICLE_RADIUS * MULTIPLIER_SMOOTHING_RADIUS;
   int gridWidth = std::ceil((SIM_MAX_X - SIM_MIN_X) / gridLength);
@@ -176,7 +172,7 @@ int main() {
     cudaMemcpy(d_pressure, h_pressure, vectorBytes, cudaMemcpyHostToDevice);
     cudaMemcpy(d_gridCellLookup, h_gridCellLookup, intBytes, cudaMemcpyHostToDevice);
 
-    // updateKeyLookup<<<NUM_BLOCKS, NUM_THREADS>>> (d_pos, d_gridKeyLookup, gridSize);
+    // updateKeyLookup<<<TOTAL_BLOCKS, THREADS_PER_BLOCK>>> (d_pos, d_gridKeyLookup, gridSize);
     
 
     //deltatime
@@ -184,11 +180,11 @@ int main() {
     timer = std::chrono::steady_clock::now();
 
     //update particles
-    checkBoundaries<<<NUM_BLOCKS, NUM_THREADS>>> (d_pos, d_vel);
-    applyGravity<<<NUM_BLOCKS, NUM_THREADS>>> (d_vel, microDif.count());
-    updateDensity<<<NUM_BLOCKS, NUM_THREADS>>> (d_pos, d_density);
-    updatePressure<<<NUM_BLOCKS, NUM_THREADS>>> (d_pos, d_density, d_pressure);
-    update<<<NUM_BLOCKS, NUM_THREADS>>> (d_pos, d_vel, d_pressure, microDif.count());
+    checkBoundaries<<<TOTAL_BLOCKS, THREADS_PER_BLOCK>>> (d_pos, d_vel);
+    applyGravity<<<TOTAL_BLOCKS, THREADS_PER_BLOCK>>> (d_vel, microDif.count());
+    updateDensity<<<TOTAL_BLOCKS, THREADS_PER_BLOCK>>> (d_pos, d_density);
+    updatePressure<<<TOTAL_BLOCKS, THREADS_PER_BLOCK>>> (d_pos, d_density, d_pressure);
+    update<<<TOTAL_BLOCKS, THREADS_PER_BLOCK>>> (d_pos, d_vel, d_pressure, microDif.count());
 
     //copy the device vectors to the host vectors
     cudaMemcpy(h_pos, d_pos, vectorBytes, cudaMemcpyDeviceToHost);
